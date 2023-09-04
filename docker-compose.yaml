@@ -1,0 +1,54 @@
+version: "3"
+
+networks:
+  loki:
+
+services:
+  app:
+    build:
+      context: .
+    ports:
+      - "8080:8080" 
+    restart: always
+    volumes:
+      - ./reports/:/usr/app/reports/
+    environment:
+      - TZ=America/Sao_Paulo
+      - LOGGER_URL=http://loki:3100
+    depends_on:
+      - loki
+      - promtail
+      - grafana
+    networks:
+      - loki
+
+  loki:
+    image: grafana/loki:latest
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - loki
+
+  promtail:
+    image: grafana/promtail:latest
+    volumes:
+      - log_data:/var/log
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - loki
+
+  grafana:
+    image: grafana/grafana:master
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+    volumes:
+      - ./loki/grafana/provisioning/:/etc/grafana/provisioning/
+    networks:
+      - loki
+
+volumes:
+  log_data:        
